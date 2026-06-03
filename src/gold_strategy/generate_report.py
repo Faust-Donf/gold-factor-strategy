@@ -99,44 +99,93 @@ def generate_report():
     res = run_backtest(panel, sig, config.target_symbol, cost_bps)
     m = compute_metrics(res)
     
-    metrics_df = pd.DataFrame([m]).T
-    metrics_df.columns = ["Value"]
+    # Split metrics into categories and translate
+    ret_metrics = pd.DataFrame({
+        "指标名称": ["年化收益率 (Ann Return)", "基准年化收益 (BM Return)", "绝对超额收益 (Alpha)"],
+        "数值": [f"{m['Ann_Return']:.2%}", f"{m['BM_Return']:.2%}", f"{m['Alpha']:.2%}"],
+        "说明": [
+            "策略每年的平均复利回报",
+            "一直持有黄金每年的平均回报",
+            "刨除大盘涨跌后，策略纯粹靠自身能力多赚的钱"
+        ]
+    })
     
+    risk_metrics = pd.DataFrame({
+        "指标名称": ["最大回撤 (Max Drawdown)", "夏普比率 (Sharpe Ratio)", "索提诺比率 (Sortino Ratio)", "卡玛比率 (Calmar Ratio)", "市场敏感度 (Beta)"],
+        "数值": [f"{m['Max_DD']:.2%}", f"{m['Sharpe']:.3f}", f"{m['Sortino']:.3f}", f"{m['Calmar']:.3f}", f"{m['Beta']:.3f}"],
+        "说明": [
+            "历史上买入后遭遇过的最惨亏损幅度。数值越小越好。",
+            "每承受1单位总风险，能换取多少超额回报。越高越好(>1极佳)。",
+            "仅评估下跌风险的收益率。比夏普更能反映应对崩盘的能力。",
+            "年化收益与最大回撤的比例。>1说明回本快，表现优异。",
+            "策略对黄金大盘的跟随程度。0.5说明大盘跌10%，策略才跌5%。"
+        ]
+    })
+    
+    trade_metrics = pd.DataFrame({
+        "指标名称": ["胜率 (Win Rate)", "市场暴露度 (Exposure)", "总交易次数 (Total Trades)"],
+        "数值": [f"{m['Win_Rate']:.2%}", f"{m['Exposure']:.2%}", f"{int(m['Num_Trades'])}"],
+        "说明": [
+            "所有开仓中，最终赚钱离场的比例。",
+            "资金在市场里的时间占比。40%说明60%时间在空仓避险。",
+            "回测历史中的完整买卖回合数。"
+        ]
+    })
+    
+    def generate_html_table(df, title):
+        html = f"<h2>{title}</h2>"
+        html += df.to_html(index=False, classes="table", escape=False)
+        return html
+        
+    def generate_md_table(df, title):
+        md = f"### {title}\n"
+        md += "| " + " | ".join(df.columns) + " |\n"
+        md += "| " + " | ".join(["---"] * len(df.columns)) + " |\n"
+        for _, row in df.iterrows():
+            md += "| " + " | ".join(map(str, row.values)) + " |\n"
+        return md + "\n"
+
     img_b64 = create_charts(panel, res, sig)
     
     html_content = f"""
     <html>
     <head>
-        <title>Gold Factor Strategy Report (Asymmetric)</title>
+        <meta charset="utf-8">
+        <title>黄金量化交易策略 (Gold Factor Strategy)</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; background-color: #f8f9fa; color: #333; }}
+            body {{ font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 40px; background-color: #f8f9fa; color: #333; line-height: 1.6; }}
             h1 {{ color: #2c3e50; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }}
+            h2 {{ color: #1a5276; margin-top: 30px; }}
             .container {{ display: flex; flex-direction: column; max-width: 1200px; margin: auto; }}
-            .table {{ border-collapse: collapse; width: 400px; margin-bottom: 30px; background: white; }}
+            .table {{ border-collapse: collapse; width: 100%; margin-bottom: 30px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }}
             .table th, .table td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
             .table th {{ background-color: #2c3e50; color: white; }}
-            .table tr:nth-child(even) {{ background-color: #f2f2f2; }}
-            .chart {{ margin-top: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
-            .config {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 30px;}}
-            .config h3 {{ margin-top: 0; }}
+            .table tr:nth-child(even) {{ background-color: #f9f9f9; }}
+            .chart {{ margin-top: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 4px; }}
+            .config {{ background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid #2c3e50; }}
+            .config h3 {{ margin-top: 0; color: #2c3e50; }}
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>Gold Factor Quantitative Strategy - Final Report</h1>
+            <h1>黄金多因子量化交易策略 - 深度分析报告</h1>
             
             <div class="config">
-                <h3>Final Factor Composition (10 Factors)</h3>
-                <p><b>Technical:</b> Breakout_60d (+), Mom_60d (-), ATR_Ratio_14_60 (+), Mom_Accel_20_60 (+)</p>
-                <p><b>Macro / Relative:</b> IEF_DD_252d (+), GLD_SPY_Corr_20d (+), IEF_Mom_10d (+), GLD_vs_TLT_RS_60d (-), GLD_vs_SPY_RS_60d (-), VIX_Mom_20d (+)</p>
-                <p><b>Logic:</b> Asymmetric Thresholds. Enter Long when score > {entry_thr}, Exit to Cash when score < {exit_thr}. Hold period: {hold_days} days.</p>
-                <p><i>This allows massive exposure during uptrends while retaining extreme crash avoidance capabilities.</i></p>
+                <h3>🛠️ 策略核心逻辑 (最终严选 10 因子组合)</h3>
+                <p><b>趋势与波动 (技术面):</b> 60日突破 (Breakout_60d), 60日动量衰竭 (Mom_60d), 波动率扩张 (ATR_Ratio_14_60), 动量加速度 (Mom_Accel_20_60)</p>
+                <p><b>避险与宏观 (宏观面):</b> 美债回撤避险 (IEF_DD_252d), 黄金美股相关性 (GLD_SPY_Corr_20d), 避险资金流入 (IEF_Mom_10d), 黄金相对美债强势 (GLD_vs_TLT_RS_60d), 黄金相对美股强势 (GLD_vs_SPY_RS_60d), VIX恐慌指数 (VIX_Mom_20d)</p>
+                <p><b>操作机制 (非对称极值法):</b> 综合打分超过 <b>{entry_thr}</b> 时入场做多；当宏观环境恶化，打分跌破严格的 <b>{exit_thr}</b> 时空仓避险。持仓下限：{hold_days} 天。</p>
+                <p><i>💡 意义：这套逻辑能在黄金大牛市中死死咬住利润，并在类似于 2013年、2020年 的系统性流动性危机中，提前嗅到风险并逃顶。</i></p>
             </div>
             
-            {df_to_html(metrics_df, "Performance Metrics (vs Buy & Hold GLD)")}
+            {generate_html_table(ret_metrics, "📈 收益能力指标 (Return Metrics)")}
+            {generate_html_table(risk_metrics, "🛡️ 风险控制指标 (Risk Metrics)")}
+            {generate_html_table(trade_metrics, "⚖️ 交易统计 (Trade Statistics)")}
             
-            <h2>Visualization & Trade Points</h2>
-            <p>Green Triangles (▲) indicate Buy signals. Red Triangles (▼) indicate Sell (Go Cash) signals.</p>
+            <h2>📊 可视化与具体买卖点位 (Trade Visualizations)</h2>
+            <p>图中 <b>绿色向上箭头 (▲)</b> 代表满足宏观入场条件，执行<b>买入做多</b>。<br>
+            <b>红色向下箭头 (▼)</b> 代表避险因子报警，执行<b>清仓避险</b>。<br>
+            绿色阴影区域为您实际持有黄金的阶段，空白区域为资金空仓安全的阶段。</p>
             <img class="chart" src="data:image/png;base64,{img_b64}" alt="Strategy Charts" style="width:100%; max-width:1200px;"/>
         </div>
     </body>
@@ -147,34 +196,24 @@ def generate_report():
         f.write(html_content)
         
     # Generate README.md content
-    md_content = f"""# Gold Factor Quantitative Strategy
+    md_content = f"""# 黄金多因子量化交易策略 (Gold Factor Quantitative Strategy)
 
-## Strategy Overview
-This strategy employs a multi-factor asymmetric threshold model to trade Gold (GLD). 
-By capturing non-linear relationships between 10 carefully selected macro and technical factors, the model maximizes upside exposure while effectively dodging major macro drawdowns.
+## 🛠️ 策略核心逻辑
+本策略采用**非对称多因子阈值模型**来交易黄金(GLD)。通过捕捉 10 个精心挑选的宏观与技术因子，策略在最大化上涨收益的同时，有效规避了黄金历史上的重大回撤。
 
-### Final Factor Composition (10 Factors)
-- **Technical:** Breakout_60d (+), Mom_60d (-), ATR_Ratio_14_60 (+), Mom_Accel_20_60 (+)
-- **Macro / Relative:** IEF_DD_252d (+), GLD_SPY_Corr_20d (+), IEF_Mom_10d (+), GLD_vs_TLT_RS_60d (-), GLD_vs_SPY_RS_60d (-), VIX_Mom_20d (+)
-- **Logic:** Asymmetric Thresholds. Enter Long when score > {entry_thr}, Exit to Cash when score < {exit_thr}. Hold period: {hold_days} days.
+### 最终严选 10 因子组合
+- **趋势与波动 (技术面):** 60日突破 (+), 60日动量衰竭 (-), 波动率扩张 (+), 动量加速度 (+)
+- **避险与宏观 (宏观面):** 美债回撤 (+), 黄金美股相关性 (+), 美债动量 (+), 黄金相对美债强势 (-), 黄金相对美股强势 (-), VIX恐慌动量 (+)
+- **操作机制:** 综合打分 > {entry_thr} 时入场做多，跌破 {exit_thr} 时清仓避险。
 
-## Performance Metrics (vs Buy & Hold GLD)
-| Metric | Value |
-|--------|-------|
-| Annualized Return | {m['Ann_Return']:.2%} |
-| Benchmark Return | {m['BM_Return']:.2%} |
-| Sharpe Ratio | {m['Sharpe']:.3f} |
-| Sortino Ratio | {m['Sortino']:.3f} |
-| Calmar Ratio | {m['Calmar']:.3f} |
-| Alpha | {m['Alpha']:.2%} |
-| Beta | {m['Beta']:.3f} |
-| Max Drawdown | {m['Max_DD']:.2%} |
-| Market Exposure | {m['Exposure']:.2%} |
-| Win Rate | {m['Win_Rate']:.2%} |
-| Total Trades | {int(m['Num_Trades'])} |
+## 📊 策略表现深度解析
 
-## Visualizations & S/B Trade Points
-Green Triangles (▲) indicate Buy signals. Red Triangles (▼) indicate Sell (Go Cash) signals.
+{generate_md_table(ret_metrics, "📈 收益能力指标")}
+{generate_md_table(risk_metrics, "🛡️ 风险控制指标")}
+{generate_md_table(trade_metrics, "⚖️ 交易统计")}
+
+## 📈 走势图与买卖点标记
+绿色向上箭头 (▲) 表示执行**买入做多**。红色向下箭头 (▼) 表示执行**清仓避险**。
 ![Strategy Charts](chart.png)
 """
 
@@ -182,7 +221,6 @@ Green Triangles (▲) indicate Buy signals. Red Triangles (▼) indicate Sell (G
         f.write(md_content)
 
     print(f"Report generated at report.html and README.md")
-    print(f"Ann Return: {m['Ann_Return']:.4f}, Sharpe: {m['Sharpe']:.4f}, Max DD: {m['Max_DD']:.4f}")
 
 if __name__ == "__main__":
     generate_report()
