@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches
+.pytest_cache/
+.ipynb_checkpoints/
+.cache/
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Project specific data and reports
+data/raw/*
+data/processed/*
+reports/html/*
+reports/figures/*
+reports/signals/*
+
+# Except placeholder/keep files
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!reports/html/.gitkeep
+!reports/figures/.gitkeep
+!reports/signals/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
