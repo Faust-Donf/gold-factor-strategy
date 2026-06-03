@@ -87,6 +87,57 @@ def create_charts(panel, results, sig_df):
     
     return image_base64
 
+def create_yearly_bs_charts(panel, sig_df):
+    plt.style.use('bmh')
+    import matplotlib.dates as mdates
+    
+    years = panel.index.year.unique()
+    num_years = len(years)
+    cols = 4
+    rows = int(np.ceil(num_years / cols))
+    
+    fig, axes = plt.subplots(rows, cols, figsize=(20, 4 * rows))
+    axes = axes.flatten()
+    
+    for i, year in enumerate(years):
+        ax = axes[i]
+        mask = panel.index.year == year
+        price = panel.loc[mask, "GLD_Adj_Close"]
+        sig = sig_df[mask]
+        
+        if price.empty:
+            continue
+            
+        ax.plot(price.index, price, color="gray", alpha=0.8, linewidth=1.5)
+        
+        buys = sig[(sig["trade_flag"] == 1) & (sig["position"] == 1)]
+        sells = sig[(sig["trade_flag"] == 1) & (sig["position"] == 0)]
+        
+        if not buys.empty:
+            ax.scatter(buys.index, price.loc[buys.index], marker='^', color='green', s=100, zorder=5)
+        if not sells.empty:
+            ax.scatter(sells.index, price.loc[sells.index], marker='v', color='red', s=100, zorder=5)
+            
+        ax.fill_between(price.index, price.min(), price.max(), where=(sig["position"] == 1), color='green', alpha=0.15)
+        
+        ax.set_title(f"BS Points - {year}", fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+        
+    for i in range(num_years, len(axes)):
+        fig.delaxes(axes[i])
+        
+    plt.tight_layout()
+    plt.savefig('bs_yearly_chart.png', format='png', dpi=150)
+    
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png', dpi=150)
+    buffer.seek(0)
+    bs_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    plt.close()
+    
+    return bs_b64
+
 def generate_report():
     config = StrategyConfig.get_default()
     panel = build_panel(config)
@@ -160,6 +211,7 @@ def generate_report():
         return md + "\n"
 
     img_b64 = create_charts(panel, res, sig)
+    bs_b64 = create_yearly_bs_charts(panel, sig)
     
     html_content = f"""
     <html>
@@ -196,11 +248,14 @@ def generate_report():
             {generate_html_table(risk_metrics, "🛡️ 风险控制指标 (Risk Metrics)")}
             {generate_html_table(trade_metrics, "⚖️ 交易统计 (Trade Statistics)")}
             
-            <h2>📊 可视化与具体买卖点位 (Trade Visualizations)</h2>
-            <p>图中 <b>绿色向上箭头 (▲)</b> 代表满足宏观入场条件，执行<b>买入做多</b>。<br>
-            <b>红色向下箭头 (▼)</b> 代表避险因子报警，执行<b>清仓避险</b>。<br>
-            绿色阴影区域为您实际持有黄金的阶段，空白区域为资金空仓安全的阶段。</p>
+            <h2>📊 宏观走势与年度对比 (Macro & Yearly Charts)</h2>
             <img class="chart" src="data:image/png;base64,{img_b64}" alt="Strategy Charts" style="width:100%; max-width:1200px;"/>
+            
+            <h2>🔍 历年精准买卖点切片图 (Yearly BS Facet Plot)</h2>
+            <p>图中 <b>绿色向上箭头 (▲)</b> 代表执行<b>买入做多</b>。<br>
+            <b>红色向下箭头 (▼)</b> 代表报警执行<b>清仓避险</b>。<br>
+            绿色阴影区域为满仓阶段，空白区域为安全空仓阶段。您可以清晰地看到每年逃顶和抄底的细节操作。</p>
+            <img class="chart" src="data:image/png;base64,{bs_b64}" alt="Yearly BS Charts" style="width:100%; max-width:1200px;"/>
         </div>
     </body>
     </html>
@@ -226,9 +281,12 @@ def generate_report():
 {generate_md_table(risk_metrics, "🛡️ 风险控制指标")}
 {generate_md_table(trade_metrics, "⚖️ 交易统计")}
 
-## 📈 走势图与买卖点标记
-绿色向上箭头 (▲) 表示执行**买入做多**。红色向下箭头 (▼) 表示执行**清仓避险**。
+## 📈 宏观走势与年度对比
 ![Strategy Charts](chart.png)
+
+## 🔍 历年精准买卖点切片图
+绿色向上箭头 (▲) 表示执行**买入做多**。红色向下箭头 (▼) 表示执行**清仓避险**。绿色阴影区域为满仓阶段。
+![Yearly BS Charts](bs_yearly_chart.png)
 """
 
     with open("README.md", "w", encoding="utf-8") as f:
