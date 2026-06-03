@@ -19,10 +19,10 @@ def df_to_html(df: pd.DataFrame, title: str) -> str:
 
 def create_charts(panel, results, sig_df):
     plt.style.use('bmh')
-    fig = plt.figure(figsize=(15, 12))
+    fig = plt.figure(figsize=(16, 18))
     
     # 1. Equity Curve
-    ax1 = plt.subplot(3, 1, 1)
+    ax1 = plt.subplot(4, 1, 1)
     ax1.plot(results.index, results["Strat_Cum"], label="Strategy (Asymmetric)", color="firebrick", linewidth=2)
     ax1.plot(results.index, results["BM_Cum"], label="Benchmark (Buy & Hold)", color="navy", alpha=0.7)
     ax1.set_title("Cumulative Returns", fontsize=14, fontweight='bold')
@@ -30,7 +30,7 @@ def create_charts(panel, results, sig_df):
     ax1.grid(True, alpha=0.3)
     
     # 2. Drawdown
-    ax2 = plt.subplot(3, 1, 2, sharex=ax1)
+    ax2 = plt.subplot(4, 1, 2, sharex=ax1)
     strat_dd = results["Strat_Cum"] / results["Strat_Cum"].cummax() - 1
     bm_dd = results["BM_Cum"] / results["BM_Cum"].cummax() - 1
     ax2.fill_between(strat_dd.index, strat_dd, 0, color="firebrick", alpha=0.3, label="Strategy DD")
@@ -40,25 +40,39 @@ def create_charts(panel, results, sig_df):
     ax2.grid(True, alpha=0.3)
     
     # 3. Price and S/B Points
-    ax3 = plt.subplot(3, 1, 3, sharex=ax1)
+    ax3 = plt.subplot(4, 1, 3, sharex=ax1)
     price = panel["GLD_Adj_Close"]
     ax3.plot(price.index, price, color="gray", alpha=0.5, label="GLD Price")
     
-    # Find Buy and Sell points
-    # Buy: trade_flag == 1 and position == 1
-    # Sell: trade_flag == 1 and position == 0
     buys = sig_df[(sig_df["trade_flag"] == 1) & (sig_df["position"] == 1)]
     sells = sig_df[(sig_df["trade_flag"] == 1) & (sig_df["position"] == 0)]
     
     ax3.scatter(buys.index, price.loc[buys.index], marker='^', color='green', s=80, label='Buy (Go Long)', zorder=5)
     ax3.scatter(sells.index, price.loc[sells.index], marker='v', color='red', s=80, label='Sell (Go Cash)', zorder=5)
-    
-    # Shade regions where we are long
     ax3.fill_between(price.index, price.min(), price.max(), where=(sig_df["position"] == 1), color='green', alpha=0.1)
     
     ax3.set_title("GLD Price with Long/Cash Regimes", fontsize=14, fontweight='bold')
     ax3.legend(loc="upper left")
     ax3.grid(True, alpha=0.3)
+    
+    # 4. Yearly Returns Bar Chart
+    ax4 = plt.subplot(4, 1, 4)
+    # Calculate yearly returns
+    strat_yearly = results["Strat_Net"].resample('YE').apply(lambda x: (1+x).prod() - 1)
+    bm_yearly = results["BM_Net"].resample('YE').apply(lambda x: (1+x).prod() - 1)
+    
+    years = strat_yearly.index.year
+    x = np.arange(len(years))
+    width = 0.35
+    
+    ax4.bar(x - width/2, strat_yearly * 100, width, label='Strategy %', color='firebrick')
+    ax4.bar(x + width/2, bm_yearly * 100, width, label='Benchmark %', color='navy', alpha=0.7)
+    
+    ax4.set_title("Yearly Returns Comparison (%)", fontsize=14, fontweight='bold')
+    ax4.set_xticks(x)
+    ax4.set_xticklabels(years, rotation=45)
+    ax4.legend(loc="upper left")
+    ax4.grid(True, alpha=0.3)
     
     plt.tight_layout()
     
