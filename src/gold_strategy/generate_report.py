@@ -353,6 +353,43 @@ def generate_report():
 ## 🔍 历年精准买卖点切片图
 绿色向上箭头 (▲) 表示执行**买入做多**。红色向下箭头 (▼) 表示执行**清仓避险**。绿色阴影区域为满仓阶段。
 ![Yearly BS Charts](bs_yearly_chart.png)
+
+## 💻 本地安装与运行 (Installation & Usage)
+
+### 环境配置
+```bash
+# 推荐使用 Python 3.9+
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+### 运行报告生成器
+```bash
+# 生成最新的 report.html 和 README.md
+python src/gold_strategy/generate_report.py
+```
+
+### 运行参数敏感性压力测试
+```bash
+python scripts/test_robustness.py
+```
+
+## 📂 项目结构 (Project Structure)
+```text
+.
+├── data/                  # 历史价格和宏观数据缓存
+├── src/gold_strategy/     # 策略核心源代码
+│   ├── backtest/          # 向量化回测引擎与指标计算
+│   ├── features/          # 120+ 宏观与技术特征因子生成器
+│   ├── strategy/          # 非对称阈值信号生成逻辑
+│   ├── data.py            # Yahoo Finance 数据拉取脚本
+│   └── generate_report.py # 核心运行脚本，自动生成走势图和报告
+├── scripts/               # 因子挖掘、压力测试与历史废弃脚本
+├── pyproject.toml         # Python 依赖管理配置
+├── report.html            # 自动生成的静态分析网页
+└── README.md              # 自动生成的 Github 首页文档
+```
 """
 
     with open("README.md", "w", encoding="utf-8") as f:
