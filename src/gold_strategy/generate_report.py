@@ -18,9 +18,15 @@ def main():
     tech_features = create_technical_features(panel, config.target_symbol)
     macro_features = create_macro_features(panel)
     
-    # 7. Technical vs Macro vs Combined
-    tech_selected = {"Mom_10d": 1, "Mom_60d": 1}
-    macro_selected = {"DGS10_Chg_20d": -1}
+    # 7. Optimal Mined Factors
+    tech_selected = {
+        "Vol_60d": -1,
+        "Mom_60d": -1,
+        "Volume_Ratio_20_60": 1,
+        "Breakout_20d": -1,
+        "MA_Cross_20_60": -1
+    }
+    macro_selected = {}
     combined_selected = {**tech_selected, **macro_selected}
     
     tech_sig = generate_signals(tech_features, tech_selected, min_holding_days=5)
