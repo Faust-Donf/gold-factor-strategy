@@ -1,34 +1,29 @@
-# Gold Factor Strategy
+# Gold Factor Quantitative Strategy
 
-GLD Gold ETF Factor Timing Strategy Prototype.
+## Strategy Overview
+This strategy employs a multi-factor asymmetric threshold model to trade Gold (GLD). 
+By capturing non-linear relationships between 10 carefully selected macro and technical factors, the model maximizes upside exposure while effectively dodging major macro drawdowns.
 
-## Quickstart
+### Final Factor Composition (10 Factors)
+- **Technical:** Breakout_60d (+), Mom_60d (-), ATR_Ratio_14_60 (+), Mom_Accel_20_60 (+)
+- **Macro / Relative:** IEF_DD_252d (+), GLD_SPY_Corr_20d (+), IEF_Mom_10d (+), GLD_vs_TLT_RS_60d (-), GLD_vs_SPY_RS_60d (-), VIX_Mom_20d (+)
+- **Logic:** Asymmetric Thresholds. Enter Long when score > -0.15, Exit to Cash when score < -0.45. Hold period: 5 days.
 
-This project uses a standard `pyproject.toml` and requires Python >= 3.10.
-To install:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
-```
+## Performance Metrics (vs Buy & Hold GLD)
+| Metric | Value |
+|--------|-------|
+| Annualized Return | 16.79% |
+| Benchmark Return | 10.92% |
+| Sharpe Ratio | 1.060 |
+| Sortino Ratio | 1.284 |
+| Calmar Ratio | 0.474 |
+| Alpha | 8.44% |
+| Beta | 0.765 |
+| Max Drawdown | -35.42% |
+| Market Exposure | 79.25% |
+| Win Rate | 53.79% |
+| Total Trades | 73 |
 
-## Running the Code
-
-You can run the entrypoints as follows:
-
-```bash
-python -m gold_strategy.run_research
-python -m gold_strategy.run_backtest
-python -m gold_strategy.generate_report
-python -m gold_strategy.latest_signal
-```
-
-Or explore via notebooks:
-- `notebooks/01_factor_research.ipynb`
-- `notebooks/02_strategy_backtest.ipynb`
-
-## Known Limitations
-
-- **Rate Limits**: The default setup relies on `yfinance` and `pandas-datareader` (FRED). You may encounter rate limiting errors ("Too Many Requests") if you run data fetches frequently. The data loaders degrade gracefully to empty DataFrames if data cannot be fetched.
-- **Macro Data Lag**: FRED macro data is forward-filled. True lag in data release is not fully simulated unless local cache overrides specify exact release dates.
-- **Free Data Quality**: Free API endpoints may have missing or erroneous daily points.
+## Visualizations & S/B Trade Points
+Green Triangles (▲) indicate Buy signals. Red Triangles (▼) indicate Sell (Go Cash) signals.
+![Strategy Charts](chart.png)

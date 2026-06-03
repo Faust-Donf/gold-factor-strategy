@@ -62,6 +62,9 @@ def create_charts(panel, results, sig_df):
     
     plt.tight_layout()
     
+    # Save chart locally for GitHub rendering
+    plt.savefig('chart.png', format='png', dpi=150)
+    
     buffer = BytesIO()
     plt.savefig(buffer, format='png', dpi=150)
     buffer.seek(0)
@@ -143,7 +146,42 @@ def generate_report():
     with open("report.html", "w", encoding="utf-8") as f:
         f.write(html_content)
         
-    print(f"Report generated at report.html")
+    # Generate README.md content
+    md_content = f"""# Gold Factor Quantitative Strategy
+
+## Strategy Overview
+This strategy employs a multi-factor asymmetric threshold model to trade Gold (GLD). 
+By capturing non-linear relationships between 10 carefully selected macro and technical factors, the model maximizes upside exposure while effectively dodging major macro drawdowns.
+
+### Final Factor Composition (10 Factors)
+- **Technical:** Breakout_60d (+), Mom_60d (-), ATR_Ratio_14_60 (+), Mom_Accel_20_60 (+)
+- **Macro / Relative:** IEF_DD_252d (+), GLD_SPY_Corr_20d (+), IEF_Mom_10d (+), GLD_vs_TLT_RS_60d (-), GLD_vs_SPY_RS_60d (-), VIX_Mom_20d (+)
+- **Logic:** Asymmetric Thresholds. Enter Long when score > {entry_thr}, Exit to Cash when score < {exit_thr}. Hold period: {hold_days} days.
+
+## Performance Metrics (vs Buy & Hold GLD)
+| Metric | Value |
+|--------|-------|
+| Annualized Return | {m['Ann_Return']:.2%} |
+| Benchmark Return | {m['BM_Return']:.2%} |
+| Sharpe Ratio | {m['Sharpe']:.3f} |
+| Sortino Ratio | {m['Sortino']:.3f} |
+| Calmar Ratio | {m['Calmar']:.3f} |
+| Alpha | {m['Alpha']:.2%} |
+| Beta | {m['Beta']:.3f} |
+| Max Drawdown | {m['Max_DD']:.2%} |
+| Market Exposure | {m['Exposure']:.2%} |
+| Win Rate | {m['Win_Rate']:.2%} |
+| Total Trades | {int(m['Num_Trades'])} |
+
+## Visualizations & S/B Trade Points
+Green Triangles (▲) indicate Buy signals. Red Triangles (▼) indicate Sell (Go Cash) signals.
+![Strategy Charts](chart.png)
+"""
+
+    with open("README.md", "w", encoding="utf-8") as f:
+        f.write(md_content)
+
+    print(f"Report generated at report.html and README.md")
     print(f"Ann Return: {m['Ann_Return']:.4f}, Sharpe: {m['Sharpe']:.4f}, Max DD: {m['Max_DD']:.4f}")
 
 if __name__ == "__main__":
