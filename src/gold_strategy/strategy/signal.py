@@ -2,18 +2,17 @@ import pandas as pd
 from .scoring import standardize_factors, compute_equal_weight_score
 from .rules import apply_holding_period
 
-def generate_signals(features: pd.DataFrame, selected_factors: dict, min_holding_days: int = 5) -> pd.DataFrame:
+def generate_signals(features: pd.DataFrame, selected_factors: dict, min_holding_days: int = 5, threshold: float = -0.25, zscore_window: int = 252) -> pd.DataFrame:
     """End-to-end signal generation from features."""
     
     # 1. Standardize and orient
-    std_factors = standardize_factors(features, selected_factors)
+    std_factors = standardize_factors(features, selected_factors, window=zscore_window)
     
     # 2. Score
     score = compute_equal_weight_score(std_factors)
     
     # 3. Raw Signal: score > threshold -> 1 (long), else 0 (cash)
-    # We introduce a bullish bias threshold (-0.25) to stay invested longer and reduce whipsaws.
-    raw_signal = (score > -0.25).astype(int)
+    raw_signal = (score > threshold).astype(int)
     
     # 4. Apply rules
     signal_df = apply_holding_period(raw_signal, min_holding_days)
