@@ -11,7 +11,19 @@ from gold_strategy.data.quality import check_data_quality, clean_panel
 def build_panel(config: StrategyConfig, cache_dir: Optional[str] = None, local_csv: Optional[str] = None) -> pd.DataFrame:
     """Build the main daily research panel."""
     
+    if local_csv is None and hasattr(config, 'local_csv'):
+        local_csv = config.local_csv
+        
     if local_csv and os.path.exists(local_csv):
+        print(f"Loading data from local CSV: {local_csv}")
+        panel = pd.read_csv(local_csv, index_col=0, parse_dates=True)
+        # FRED data needs to be merged in still if it's missing from the panel
+        if "FRED_DGS10" not in panel.columns:
+            fred_panel = load_fred_data(config.fred_series, config.start_date, None, cache_dir)
+            if not fred_panel.empty:
+                panel = panel.join(fred_panel, how="left")
+                panel.update(panel.ffill())
+        return panel
         panel = load_local_data(local_csv)
     else:
         # 1. Download target and market data

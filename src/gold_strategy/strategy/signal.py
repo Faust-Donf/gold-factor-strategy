@@ -11,8 +11,9 @@ def generate_signals(features: pd.DataFrame, selected_factors: dict, min_holding
     # 2. Score
     score = compute_equal_weight_score(std_factors)
     
-    # 3. Raw Signal: score > 0 -> 1 (long), else 0 (cash)
-    raw_signal = (score > 0).astype(int)
+    # 3. Raw Signal: score > threshold -> 1 (long), else 0 (cash)
+    # We introduce a bullish bias threshold (-0.25) to stay invested longer and reduce whipsaws.
+    raw_signal = (score > -0.25).astype(int)
     
     # 4. Apply rules
     signal_df = apply_holding_period(raw_signal, min_holding_days)

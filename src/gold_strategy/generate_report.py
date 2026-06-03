@@ -18,15 +18,15 @@ def main():
     tech_features = create_technical_features(panel, config.target_symbol)
     macro_features = create_macro_features(panel)
     
-    # 7. Optimal Mined Factors
+    # 7. Optimal Mined Factors (Bullish Bias 0.25 in engine)
     tech_selected = {
-        "Vol_60d": -1,
         "Mom_60d": -1,
-        "Volume_Ratio_20_60": 1,
-        "Breakout_20d": -1,
-        "MA_Cross_20_60": -1
+        "Volume_Ratio_20_60": 1
     }
-    macro_selected = {}
+    macro_selected = {
+        "Oil_Mom_20d": -1,
+        "VIX_Chg_20d": -1
+    }
     combined_selected = {**tech_selected, **macro_selected}
     
     tech_sig = generate_signals(tech_features, tech_selected, min_holding_days=5)

@@ -23,6 +23,8 @@ class StrategyConfig:
     walk_forward_train_years: int = 5
     walk_forward_test_years: int = 1
     
+    local_csv: str = "data/raw/yahoo_panel.csv"
+    
     main_weighting: str = "equal_weight"
     comparison_weighting: str = "ICIR_weighted"
     
